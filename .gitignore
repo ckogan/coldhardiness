@@ -1,0 +1,4 @@
+.Rbuildignore
+man/*
+NAMESPACE
+.Rproj.user/*
