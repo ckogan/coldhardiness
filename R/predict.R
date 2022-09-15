@@ -35,6 +35,11 @@ predict.chbmod <- function(object, newdata = NA, re.form=NULL, type=c("link", "r
 }
 
 #' @export
+beta_pars <- function(obj) {
+  t(samp(obj$sflat, "beta", partial = T))
+}
+
+#' @export
 augment_lt <- function(object, newdata = weather_daily_default_fieldseason(), re.form=NULL, f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, xcol = 2) {
   # beta = NULL,
   # if(is.null(beta))
@@ -55,30 +60,97 @@ augment_lt <- function(object, newdata = weather_daily_default_fieldseason(), re
   newdata
 }
 
+#' #' @export
+#' augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_name = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005)) {
+#'   # beta = NULL,
+#'   # if(is.null(beta))
+#'   newdata[["std_ftemp"]] <- 0
+#'   newdata <- unique(newdata)
+#'   lt <- vector("numeric", nrow(newdata))
+#'   for(i in 1:nrow(newdata)) {
+#'     cat(paste0(i, "/", nrow(newdata), "\n"))
+#'     data <- newdata[rep(i, length(std_ftemp_seq)),]
+#'     data$std_ftemp <- std_ftemp_seq
+#'
+#'     lp <- predict(object, newdata = data, re.form = re.form.conditional, type = "link", stat = NULL)
+#'
+#'     re <- rnorm(ncol(lp), 0, rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% re.form.marginal]))
+#'     lp <- sweep(lp, 2, re, `+`)
+#'     p_conditional <- 1 / (1 + exp(-lp))
+#'     p_marginal <- rowMeans(p_conditional)
+#'     lt[i] <- std_ftemp_seq[which(p_marginal > p)[1]]
+#'   }
+#'   newdata[[lt_name]] <- f(lt)
+#'   newdata
+#' }
+
+
+#' augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_name = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T) {
+#'   # beta = NULL,
+#'   # if(is.null(beta))
+#'   if(parallel)
+#'     `%fdo%` <- `%dopar%`
+#'   else
+#'     `%fdo%` <- `%do%`
+#'   newdata[["std_ftemp"]] <- 0
+#'   newdata <- unique(newdata)
+#'   #lt <- vector("numeric", nrow(newdata))
+#'   lt <- foreach(i = 1:nrow(newdata), .export = c("object","newdata", "re.form.conditional", "re.form.marginal", "p", "std_ftemp_seq")) %fdo% {
+#'     cat(paste0(i, "/", nrow(newdata), "\n"))
+#'     data <- newdata[rep(i, length(std_ftemp_seq)),]
+#'     data$std_ftemp <- std_ftemp_seq
+#'
+#'     lp <- predict(object, newdata = data, re.form = re.form.conditional, type = "link", stat = NULL)
+#'
+#'     re <- rnorm(ncol(lp), 0, rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% re.form.marginal]))
+#'     lp <- sweep(lp, 2, re, `+`)
+#'     p_conditional <- 1 / (1 + exp(-lp))
+#'     p_marginal <- rowMeans(p_conditional)
+#'     std_ftemp_seq[which(p_marginal > p)[1]]
+#'   }
+#'   lt <- do.call(c, lt)
+#'   newdata[[lt_name]] <- f(lt)
+#'   newdata
+#' }
+
 #' @export
-augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005)) {
+augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
   # beta = NULL,
   # if(is.null(beta))
+  if(parallel)
+    `%fdo%` <- `%dopar%`
+  else
+    `%fdo%` <- `%do%`
   newdata[["std_ftemp"]] <- 0
   newdata <- unique(newdata)
-  lt <- vector("numeric", nrow(newdata))
-  for(i in 1:nrow(newdata)) {
+  #lt <- vector("numeric", nrow(newdata))
+  lt_samples <- foreach(i = 1:nrow(newdata), .export = c("object","newdata", "re.form.conditional", "re.form.marginal", "p", "std_ftemp_seq")) %fdo% {
     cat(paste0(i, "/", nrow(newdata), "\n"))
     data <- newdata[rep(i, length(std_ftemp_seq)),]
     data$std_ftemp <- std_ftemp_seq
 
     lp <- predict(object, newdata = data, re.form = re.form.conditional, type = "link", stat = NULL)
-
-    re <- rnorm(ncol(pred), 0, rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% re.form.marginal]))
-    lp <- sweep(lp, 2, re, `+`)
-    p_conditional <- 1 / (1 + exp(-lp))
-    p_marginal <- rowMeans(p_conditional)
-    lt[i] <- std_ftemp[which(p_marginal > p)]
+    p_conditional <- array(NA, dim = c(dim(lp), B))
+    for(j in 1:ncol(lp)) {
+      re <- matrix(rnorm(nrow(lp)*B, 0, rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% re.form.marginal])), ncol = B)
+      lp_j <- sweep(re, 1, lp[,j], `+`)
+      p_conditional[,j,] <- 1 / (1 + exp(-(lp_j)))
+    }
+    p_marginal <- apply(p_conditional, c(1,2), mean)
+    sapply(p, function(p_i) apply(p_marginal, 2, function(x) std_ftemp_seq[which(x > p_i)[1]])) # S x p
   }
-  newdata[[lt_names[i]]] <- f(lt)
+  lt_samples <- do.call(partial(abind, along = 3), lt_samples)
+  lt_samples <- f(lt_samples)
+  lt <- apply(lt_samples, c(2,3), center)
+  if(!is.null(se_fit))
+    lt_se <- apply(lt_samples, c(2,3), se_fit)
+  for(i in 1:length(p)) {
+    newdata[[lt_names[i]]] <- lt[i,]
+    if(!is.null(se_fit)) {
+      newdata[[paste0(lt_names[i], "_se")]] <- lt_se[i,]
+    }
+  }
   newdata
-
-
 }
 
 #' @export
