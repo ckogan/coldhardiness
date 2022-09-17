@@ -2,8 +2,7 @@
 chbmod <- function(object, rhsform) {
   sflat = flatten_stan_array(as.array(object))
 
-  structure(list(stanfit = object,
-                 model_pars = dimnames(sflat)[[2]],
+  structure(list(model_pars = dimnames(sflat)[[2]],
                  rhsform = rhsform,
                  sflat = sflat),
             class = "chbmod")
