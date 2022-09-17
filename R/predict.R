@@ -124,7 +124,7 @@ augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NU
   newdata[["std_ftemp"]] <- 0
   newdata <- unique(newdata)
   #lt <- vector("numeric", nrow(newdata))
-  lt_samples <- foreach(i = 1:nrow(newdata), .export = c("object","newdata", "re.form.conditional", "re.form.marginal", "p", "std_ftemp_seq")) %fdo% {
+  lt_samples <- foreach(i = 1:nrow(newdata), .export = c("object","newdata", "re.form.conditional", "re.form.marginal", "p", "std_ftemp_seq"), .packages = c("coldhardiness")) %fdo% {
     cat(paste0(i, "/", nrow(newdata), "\n"))
     data <- newdata[rep(i, length(std_ftemp_seq)),]
     data$std_ftemp <- std_ftemp_seq
