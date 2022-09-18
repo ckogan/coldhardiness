@@ -144,9 +144,9 @@ augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NU
   if(!is.null(se_fit))
     lt_se <- apply(lt_samples, c(2,3), se_fit)
   for(i in 1:length(p)) {
-    newdata[[lt_names[i]]] <- lt[i,]
+    newdata[[paste0("LT", lt_names[i])]] <- lt[i,]
     if(!is.null(se_fit)) {
-      newdata[[paste0(lt_names[i], "_se")]] <- lt_se[i,]
+      newdata[[paste0("SE",lt_names[i])]] <- lt_se[i,]
     }
   }
   newdata
