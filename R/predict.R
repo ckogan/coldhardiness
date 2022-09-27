@@ -180,7 +180,7 @@ augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NU
 
 
 #' @export
-augment_marginal_lt_simple <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
+augment_marginal_lt_simple <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T) {
   # beta = NULL,
   # if(is.null(beta))
   if(parallel)
