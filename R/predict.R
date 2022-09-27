@@ -121,70 +121,47 @@ predict_marginal_sim2 <- function(object, newdata = NULL, re.form.conditional = 
     newdata
 }
 
-
-#' augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
-#'   # beta = NULL,
-#'   # if(is.null(beta))
-#'   if(parallel)
-#'     `%fdo%` <- `%dopar%`
-#'   else
-#'     `%fdo%` <- `%do%`
-#'   newdata[["std_ftemp"]] <- 0
-#'   newdata <- unique(newdata)
-#'   #lt <- vector("numeric", nrow(newdata))
-#'   lt_samples <- foreach(i = 1:nrow(newdata), .export = c("object","newdata", "re.form.conditional", "re.form.marginal", "p", "std_ftemp_seq"), .packages = c("coldhardiness")) %fdo% {
-#'     cat(paste0(i, "/", nrow(newdata), "\n"))
-#'     data <- newdata[rep(i, length(std_ftemp_seq)),]
-#'     data$std_ftemp <- std_ftemp_seq
-#'
-#'     lp <- predict(object, newdata = data, re.form = re.form.conditional, type = "link", stat = NULL)
-#'     if(!is.na(re.form.marginal))
-#'       u_samp <- u_pars(object, newdata[i,], re.form.marginal)[[1]] #because only doing for one row
-#'     p_conditional <- array(NA, dim = c(dim(lp), B))
-#'     for(j in 1:ncol(lp)) {
-#'       #re <- matrix(rnorm(nrow(lp)*B, 0, rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal])), ncol = B)
-#'       print(sqrt(rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2)))
-#'       re <- rnorm(B, 0, sqrt(rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2)))
-#'       if(!is.na(re.form.marginal)) {
-#'         re2 <- apply(u_samp, 2, function(x) sample(x, B, replace = T))
-#'         # print(apply(u_samp, 2, sd))
-#'         # re2 <- sum(colMeans(u_samp))
-#'         # re2 <- do.call(cbind, re2)
-#'         # re2 <- apply(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal], 2, function(x) sample(x, B, replace = T))
-#'         re2 <- rowSums(re2)
-#'         re <- re + re2
-#'       }
-#'       #lp_j <- sweep(re, 1, lp[,j], `+`)
-#'       lp_j <- t(outer(re, lp[,j], FUN = `+`))
-#'       p_conditional[,j,] <- 1 / (1 + exp(-(lp_j)))
-#'     }
-#'     p_marginal <- apply(p_conditional, c(1,2), mean)
-#'     sapply(p, function(p_i) apply(p_marginal, 2, function(x) std_ftemp_seq[which(x > p_i)[1]])) # S x p
-#'   }
-#'
-#'   lt_samples <- do.call(partial(abind, along = 3), lt_samples)
-#'   lt_samples <- f(lt_samples)
-#'   lt <- apply(lt_samples, c(2,3), center)
-#'   if(!is.null(se_fit)) {
-#'     lt_se <- apply(lt_samples, c(2,3), se_fit)
-#'   }
-#'
-#'   for(i in 1:length(p)) {
-#'     newdata[[paste0("LT", lt_names[i])]] <- lt[i,]
-#'     if(!is.null(se_fit)) {
-#'       newdata[[paste0("SE",lt_names[i])]] <- lt_se[i,]
-#'     }
-#'   }
-#'   newdata
-#' }
-#'
-#'
-
 #' @export
 augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
+  # beta = NULL,
+  # if(is.null(beta))
+  if(parallel)
+    `%fdo%` <- `%dopar%`
+  else
+    `%fdo%` <- `%do%`
+  newdata[["std_ftemp"]] <- 0
+  newdata <- unique(newdata)
+  #lt <- vector("numeric", nrow(newdata))
+  lt_samples <- foreach(i = 1:nrow(newdata), .export = c("object","newdata", "re.form.conditional", "re.form.marginal", "p", "std_ftemp_seq"), .packages = c("coldhardiness")) %fdo% {
+    cat(paste0(i, "/", nrow(newdata), "\n"))
+    data <- newdata[rep(i, length(std_ftemp_seq)),]
+    data$std_ftemp <- std_ftemp_seq
 
-  samples <- predict_marginal_sim(object, newdata = NULL, re.form.conditional = NULL, vc.form.marginal = NULL, type="response")
-  lt_samples <- lapply(samples, function(p_marginal) sapply(p, function(p_i) apply(p_marginal, 2, function(x) std_ftemp_seq[which(x > p_i)[1]])))
+    lp <- predict(object, newdata = data, re.form = re.form.conditional, type = "link", stat = NULL)
+    if(!is.na(re.form.marginal))
+      u_samp <- u_pars(object, newdata[i,], re.form.marginal)[[1]] #because only doing for one row
+    p_conditional <- array(NA, dim = c(dim(lp), B))
+    for(j in 1:ncol(lp)) {
+      #re <- matrix(rnorm(nrow(lp)*B, 0, rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal])), ncol = B)
+      print(sqrt(rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2)))
+      re <- rnorm(B, 0, sqrt(rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2)))
+      if(!is.na(re.form.marginal)) {
+        re2 <- apply(u_samp, 2, function(x) sample(x, B, replace = T))
+        # print(apply(u_samp, 2, sd))
+        # re2 <- sum(colMeans(u_samp))
+        # re2 <- do.call(cbind, re2)
+        # re2 <- apply(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal], 2, function(x) sample(x, B, replace = T))
+        re2 <- rowSums(re2)
+        re <- re + re2
+      }
+      #lp_j <- sweep(re, 1, lp[,j], `+`)
+      lp_j <- t(outer(re, lp[,j], FUN = `+`))
+      p_conditional[,j,] <- 1 / (1 + exp(-(lp_j)))
+    }
+    p_marginal <- apply(p_conditional, c(1,2), mean)
+    sapply(p, function(p_i) apply(p_marginal, 2, function(x) std_ftemp_seq[which(x > p_i)[1]])) # S x p
+  }
+
   lt_samples <- do.call(partial(abind, along = 3), lt_samples)
   lt_samples <- f(lt_samples)
   lt <- apply(lt_samples, c(2,3), center)
@@ -200,6 +177,40 @@ augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NU
   }
   newdata
 }
+
+
+
+#
+# augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
+#   # newdata[["std_ftemp"]] <- 0
+#   newdata <- unique(newdata)
+#   lt <- lt_se <- list()
+#   for(i in 1:nrow(newdata)) {
+#     cat(paste0(i, "/", nrow(newdata)))
+#     data <- newdata[rep(i, length(std_ftemp_seq)),]
+#     data$std_ftemp <- std_ftemp_seq
+#     # data <- newdata[rep(1:nrow(newdata), each = length(std_ftemp_seq)),]
+#     # data$std_ftemp <- rep(std_ftemp_seq, nrow(newdata))
+#     samples <- predict_marginal_sim(object, newdata = data, re.form.conditional = re.form.conditional, re.form.marginal = re.form.marginal, vc.form.marginal = vc.form.marginal, type="response")
+#     lt_samples <- lapply(samples, function(p_marginal) sapply(p, function(p_i) apply(p_marginal, 2, function(x) std_ftemp_seq[which(x > p_i)[1]])))
+#     lt_samples <- do.call(partial(abind, along = 3), lt_samples)
+#     lt_samples <- f(lt_samples)
+#     lt[[i]] <- apply(lt_samples, c(2,3), center)
+#     if(!is.null(se_fit)) {
+#       lt_se[[i]] <- apply(lt_samples, c(2,3), se_fit)
+#     }
+#   }
+#   browser()
+#
+#
+#   for(i in 1:length(p)) {
+#     newdata[[paste0("LT", lt_names[i])]] <- lt[i,]
+#     if(!is.null(se_fit)) {
+#       newdata[[paste0("SE",lt_names[i])]] <- lt_se[i,]
+#     }
+#   }
+#   newdata
+# }
 
 #' @export
 flatten_stan_array <- function(x) {
