@@ -179,6 +179,50 @@ augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NU
 }
 
 
+#' @export
+augment_marginal_lt_simple <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
+  # beta = NULL,
+  # if(is.null(beta))
+  if(parallel)
+    `%fdo%` <- `%dopar%`
+  else
+    `%fdo%` <- `%do%`
+  newdata[["std_ftemp"]] <- 0
+  newdata <- unique(newdata)
+  re <- rnorm(dim(object$sflat)[1], 0, sqrt(rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2)))
+
+  #lt <- vector("numeric", nrow(newdata))
+  lt_samples <- foreach(i = 1:nrow(newdata), .export = c("object","newdata", "re.form.conditional", "re.form.marginal", "p", "std_ftemp_seq"), .packages = c("coldhardiness")) %fdo% {
+    cat(paste0(i, "/", nrow(newdata), "\n"))
+    data <- newdata[rep(i, length(std_ftemp_seq)),]
+    data$std_ftemp <- std_ftemp_seq
+
+    lp <- predict(object, newdata = data, re.form = re.form.conditional, type = "link", stat = NULL)
+    if(!is.na(re.form.marginal))
+      u_samp <- u_pars(object, newdata[i,], re.form.marginal)[[1]] #because only doing for one row
+
+    lp <- sweep(lp, 2, re, `+`)
+    p_conditional <- 1 / (1 + exp(-(lp)))
+
+    p_marginal <- rowMeans(p_conditional)#apply(p_conditional, c(1,2), mean)
+    sapply(p, function(p_i) std_ftemp_seq[which(p_marginal > p_i)[1]]) # S x p
+  }
+
+  lt_samples <- do.call(c, lt_samples)
+  lt <- f(lt_samples)
+
+  if(length(p) > 1) {
+    for(i in 1:length(p)) {
+      newdata[[paste0("LT", lt_names[i])]] <- lt[i,]
+    }
+  } else {
+    newdata[[paste0("LT", lt_names)]] <- lt
+  }
+
+  newdata
+}
+
+
 
 #
 # augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
