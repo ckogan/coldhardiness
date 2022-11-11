@@ -1,3 +1,11 @@
+##' Posterior simulations of bayesian binomial logistic model as defined in Kogan 2022
+##' @details
+##' Flattens the 3d simulation array from stanfit to a 2d array for analysis. Stores the array and removes the model object.
+##' @return
+##' Object of class chbmod containing
+##' \item{model_pars}{unique names of model parameters}
+##' \item{rhsform}{model formula for RHS}
+##' \item{sflat}{2d array of posterior simulations nsims x npars}
 #' @export
 chbmod <- function(object, rhsform) {
   sflat = flatten_stan_array(as.array(object))
@@ -9,23 +17,31 @@ chbmod <- function(object, rhsform) {
 }
 
 
-
+##' posterior predictive distribution (or characteristics of) for chbmod
+##' @param object a \code{chbmod} object
+##' @param newdata new data for prediction
+##' @param re.form  \code{NA} to specify population-level predictions (i.e., setting all random effects to zero) or a character vector with values as the names of chbmod parameters and names as the corresponding identifier in newdata
+##' @param type \describe{
+##' \item{"link"}{conditional mean on the scale of the link function,
+##' or equivalently the linear predictor of the conditional model}
+##' \item{"response"}{expected value}
+##' }
+##' @param stat \code{NULL} to specify posterior predictive distribution or function to specify a summary of this distribution
 #' @export
-predict.chbmod <- function(object, newdata = NA, re.form=NULL, type=c("link", "response"), stat = NULL) {
-  #re_pars = c(r_seasonXfield = "seasonXfield_ID", r_fieldXdate = "fieldXdate_ID"),
+predict.chbmod <- function(object, newdata = NA, re.form=NA, type=c("link", "response"), stat = NULL) {
+  ## Compute linear predictor
   X <- model.matrix(object$rhsform, newdata)
   lp <- X %*% beta_pars(object)
 
+  ## Add RE to linear predictor from re.form
   if(!is.na(re.form)) {
-    # re_mat <- newdata[,re.form, drop = F] #%>% unique(); could do unique here for speed savings
-    # unames <- lapply(1:nrow(re_mat), function(i) paste0(names(re.form), "[", re_mat[i,], "]"))
-    #
-    # u_samp <- lapply(unames, function(p) object$sflat[,dimnames(object$sflat)[[2]] %in% p])
     u_samp <- u_pars(object, newdata, re.form)
     zu_samp <- lapply(u_samp, rowSums)
     zu <- do.call(rbind, zu_samp)
     lp <- lp + zu
   }
+
+  ## Compute inverse link if desired
   if(type == "link") {
     pred <- lp
   } else if(type == "response") {
@@ -36,22 +52,42 @@ predict.chbmod <- function(object, newdata = NA, re.form=NULL, type=c("link", "r
   pred
 }
 
+##' Extract posterior simulations for random effects from chbmod
+##' @param object object of class chbmod
+##' @param newdata new data specifying random effects design
+##' @param re.form \code{NA} to specify population-level predictions (i.e., setting all random effects to zero) or a character vector with values as the names of chbmod parameters and names as the corresponding identifier in newdata
+##' @param type \describe{
+##' \item{"link"}{conditional mean on the scale of the link function,
+##' or equivalently the linear predictor of the conditional model}
+##' \item{"response"}{expected value}
+##' }
+##' @return array of dims nrow(newdata) x nsim x nre
 #' @export
 u_pars <- function(object, newdata, re.form) {
-  re_mat <- newdata[,re.form, drop = F] #%>% unique(); could do unique here for speed savings
+
+  ## Get random effects ids from newdata
+  ## FIXME: use unique() for speed savings
+  re_mat <- newdata[,re.form, drop = F]
+
+  ## Create string names to extract appropriate columns from sflat
   unames <- lapply(1:nrow(re_mat), function(i) paste0(names(re.form), "[", re_mat[i,], "]"))
+
+  ## Extract RE posterior from sflat
   lapply(unames, function(p) object$sflat[,dimnames(object$sflat)[[2]] %in% p])
 }
-
-#' @export
+##' extract posterior distribution of fixed effects from chbmod
+##' @param obj object of class chbmod
+##' @return matrix (nsim x npar) of fixed effects from chbmod
+##' @export
 beta_pars <- function(obj) {
   t(samp(obj$sflat, "beta", partial = T))
 }
 
+##' Augment lethal temperatures from chbmod to newdata
+##' @description First simplifies newdata by zeroing out std_ftemp and taking unique values.
 #' @export
 augment_lt <- function(object, newdata = weather_daily_default_fieldseason(), re.form=NULL, f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, xcol = 2) {
-  # beta = NULL,
-  # if(is.null(beta))
+
   newdata[["std_ftemp"]] <- 0
   newdata <- unique(newdata)
   lp <- predict(object, newdata = newdata, re.form = re.form, type = "link", stat = NULL)
@@ -68,6 +104,15 @@ augment_lt <- function(object, newdata = weather_daily_default_fieldseason(), re
   }
   newdata
 }
+
+## working on
+# predict_lt <- function(object, newdata, re.form, p, xvar) {
+#   remove.var <- as.formula(paste0("~ . - ", xvar))
+#   mf <- model.frame(update.formula(object$rhsform, remove.var), newdata)
+#   udata <- unique(mf)
+#   ## b0 (nrow(udata) x nsim)
+#   b0 <- predict(object, newdata = udata, re.form = re.form, type = "link", stat = NULL)
+# }
 
 #' @export
 predict_marginal_sim <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL, type=c("link", "response"), stat = NULL, parallel = T, B = 100, method = c("within", "side")) {
@@ -122,7 +167,7 @@ predict_marginal_sim2 <- function(object, newdata = NULL, re.form.conditional = 
 }
 
 #' @export
-augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "LT50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
+augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NULL, re.form.marginal = NULL, vc.form.marginal = NULL,  f = compose(c_to_f, unstd_ftemp), p = 0.5, lt_names = "50", center = median, se_fit = NULL, std_ftemp_seq = seq(-2, 2, by = 0.005), parallel = T, B = 100) {
   # beta = NULL,
   # if(is.null(beta))
   if(parallel)
@@ -143,8 +188,8 @@ augment_marginal_lt <- function(object, newdata = NULL, re.form.conditional = NU
     p_conditional <- array(NA, dim = c(dim(lp), B))
     for(j in 1:ncol(lp)) {
       #re <- matrix(rnorm(nrow(lp)*B, 0, rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal])), ncol = B)
-      print(sqrt(rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2)))
-      re <- rnorm(B, 0, sqrt(rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2)))
+      re_sd <- sqrt(sum(object$sflat[i,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2))
+      re <- rnorm(B, 0, re_sd)
       if(!is.na(re.form.marginal)) {
         re2 <- apply(u_samp, 2, function(x) sample(x, B, replace = T))
         # print(apply(u_samp, 2, sd))
@@ -192,7 +237,7 @@ augment_marginal_lt_simple <- function(object, newdata = NULL, re.form.condition
   re <- rnorm(dim(object$sflat)[1], 0, sqrt(rowSums(object$sflat[,dimnames(object$sflat)[[2]] %in% vc.form.marginal]^2)))
 
   #lt <- vector("numeric", nrow(newdata))
-  lt_samples <- foreach(i = 1:nrow(newdata), .export = c("object","newdata", "re.form.conditional", "re.form.marginal", "p", "std_ftemp_seq"), .packages = c("coldhardiness")) %fdo% {
+  lt_samples <- foreach(i = 1:nrow(newdata), .packages = c("coldhardiness", "splines")) %fdo% {
     cat(paste0(i, "/", nrow(newdata), "\n"))
     data <- newdata[rep(i, length(std_ftemp_seq)),]
     data$std_ftemp <- std_ftemp_seq
@@ -208,17 +253,12 @@ augment_marginal_lt_simple <- function(object, newdata = NULL, re.form.condition
     sapply(p, function(p_i) std_ftemp_seq[which(p_marginal > p_i)[1]]) # S x p
   }
 
-  lt_samples <- do.call(c, lt_samples)
+  lt_samples <- do.call(rbind, lt_samples)
   lt <- f(lt_samples)
 
-  if(length(p) > 1) {
-    for(i in 1:length(p)) {
-      newdata[[paste0("LT", lt_names[i])]] <- lt[i,]
-    }
-  } else {
-    newdata[[paste0("LT", lt_names)]] <- lt
+  for(i in 1:length(p)) {
+    newdata[[paste0("LT", lt_names[i])]] <- lt[,i]
   }
-
   newdata
 }
 
