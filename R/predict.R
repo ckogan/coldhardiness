@@ -4,13 +4,13 @@
 ##' @return
 ##' Object of class chbmod containing
 ##' \item{model_pars}{unique names of model parameters}
-##' \item{rhsform}{model formula for RHS}
+##' \item{rhsform}{character model formula for RHS}
 ##' \item{sflat}{2d array of posterior simulations nsims x npars}
 #' @export
 chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), comments = "", ...) {
   fteed_vty <- fteed %>% filter(variety == vty)
   reuseR(fteed_vty, repo = repo)
-  object <- fit(rhsform, fteed_vty, model, ...)
+  object <- fit(as.formula(rhsform), fteed_vty, model, ...)
   sflat = flatten_stan_array(as.array(object))
 
   structure(list(
@@ -60,8 +60,8 @@ cherry_s1_chbmod <- function(...) {
 cherry_s2_chbmod <- function(...) {
   ns_knots <- c(-0.8, -0.45, -0.32, 0.25, 1.5)
   ns_bknots <- c(-1.18, 3.71)
-  fe_formula <- as.character(substitute(cbind(NoFlowersLive, NoFlowersDead)~std_ftemp + std_AIR_TEMP_F48 + ns(std_gddchill, knots = knots, Boundary.knots = bknots), list(knots = ns_knots, bknots = ns_bknots)))
-  rhsform <- RHSForm(fe_formula, as.form = T)
+  fe_formula <- as.formula(substitute(cbind(NoFlowersLive, NoFlowersDead)~std_ftemp + std_AIR_TEMP_F48 + ns(std_gddchill, knots = knots, Boundary.knots = bknots), list(knots = ns_knots, bknots = ns_bknots)))
+  rhsform <- as.character(RHSForm(fe_formula, as.form = T))
   object <- chbmod(..., fit = fitting_cherry_stan)
   class(object) <- c("cherry_s2", class(object))
   object
@@ -168,7 +168,7 @@ fitting_cherry_stan <- function(fe_formula_rhs, fteed_vty, model, ...) {
 #' @export
 predict.chbmod <- function(object, newdata = NA, re.form=NA, type=c("link", "response"), stat = NULL) {
   ## Compute linear predictor
-  X <- model.matrix(object$rhsform, newdata)
+  X <- model.matrix(getformula(object), newdata)
   lp <- X %*% beta_pars(object)
 
   ## Add RE to linear predictor from re.form
