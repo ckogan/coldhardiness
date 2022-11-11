@@ -12,17 +12,21 @@ chbmod <- function(rhsform, fteed_vty, model, fit, repo = here("reuse"), ...) {
   object <- fit(rhsform, fteed_vty, model, ...)
   sflat = flatten_stan_array(as.array(object))
 
-  structure(list(model_pars = dimnames(sflat)[[2]],
+  structure(list(model_pars = object@model_pars,
+                 model_pars_long = dimnames(sflat)[[2]],
+                 model_code = object@stanmodel@model_code,
+                 summary = summary(object)$summary,
+                 stan_args = object@stan_args,
+                 date = object@date,
                  rhsform = rhsform,
                  sflat = sflat,
-                 output = capture.output(print(object)),
                  datahash = digest(fteed_vty)),
             class = "chbmod")
 }
 
 #' @export
 print.chbmod <- function(obj, ...) {
-  cat(obj$output)
+  print(obj$summary)
   invisible(obj)
 }
 
@@ -30,7 +34,7 @@ print.chbmod <- function(obj, ...) {
 cherry_s1_chbmod <- function(...) {
   rhsform <- ~std_ftemp
   object <- chbmod(..., rhsform = rhsform, fit = fitting_cherry_stan)
-  class(object) <- c("cherry", class(object))
+  class(object) <- c("cherry_s1", class(object))
   object
 }
 
@@ -41,28 +45,28 @@ cherry_s2_chbmod <- function(...) {
   fe_formula <- as.formula(substitute(cbind(NoFlowersLive, NoFlowersDead)~std_ftemp + std_AIR_TEMP_F48 + ns(std_gddchill, knots = knots, Boundary.knots = bknots), list(knots = ns_knots, bknots = ns_bknots)))
   rhsform <- RHSForm(fe_formula, as.form = T)
   object <- chbmod(..., fit = fitting_cherry_stan)
-  class(object) <- c("cherry", class(object))
+  class(object) <- c("cherry_s2", class(object))
   object
 }
 
 #' @export
 blueberry_s1_chbmod <-  function(...) {
   object <- chbmod(..., fit = fitting_blueberry_stan)
-  class(object) <- c("blueberry", class(object))
+  class(object) <- c("blueberry_s1", class(object))
   object
 }
 
 #' @export
 blueberry_s2_chbmod <-  function(...) {
   object <- chbmod(..., fit = fitting_blueberry_stan)
-  class(object) <- c("blueberry", class(object))
+  class(object) <- c("blueberry_s2", class(object))
   object
 }
 
 #' @export
 dataset <- function(obj, ...) UseMethod("dataset")
 dataset.chbmod <- function(obj, repo = here("reuse")) {
-  name <- paste0("md5_", obj$data_digest, ".RDS")
+  name <- paste0("md5_", obj$datahash, ".RDS")
   files <- list.files(repo)
   fmatch <- match(name, files)
   readRDS(paste0(repo, "/", files[fmatch]))
