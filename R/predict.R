@@ -7,15 +7,16 @@
 ##' \item{rhsform}{model formula for RHS}
 ##' \item{sflat}{2d array of posterior simulations nsims x npars}
 #' @export
-chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), ...) {
+chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), comments = "", ...) {
   fteed_vty <- fteed %>% filter(variety == vty)
   reuseR(fteed_vty, repo = repo)
   object <- fit(rhsform, fteed_vty, model, ...)
   sflat = flatten_stan_array(as.array(object))
 
   structure(list(
+    comments = comments,
     datahash = digest(fteed_vty),
-    date = object@date,
+    date = list(pretty=format(Sys.time(), "%a %b %d %X %Y"),formatted=str_replace_all(format(Sys.time(), "%Y-%m-%d-%X"), ":", "") %>% str_replace_all(" ", "")),
     model_code = object@stanmodel@model_code,
     model_pars = object@model_pars,
     model_pars_long = dimnames(sflat)[[2]],
@@ -28,6 +29,20 @@ chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), ...) {
 }
 
 #' @export
+saveChbmod <- function(obj, ...) UseMethod("saveChbmod")
+saveChbmod.cherry_s1 <- function(obj, folder = here("dataProcessed")) {
+  saveRDS(obj, file = paste0(folder, "/stage1_model_bayes_", obj$vty, "_", obj$date$formatted,".RDS"))
+}
+saveChbmod.cherry_s2 <- function(obj, folder = here("dataProcessed")) {
+  saveRDS(obj, file = paste0(folder, "/model_bayes_", obj$vty, "_", obj$date$formatted,".RDS"))
+}
+saveChbmod.blueberry_s1 <- function(obj, folder = here("dataProcessed")) {
+  saveRDS(obj, file = paste0(folder, "/stage1_model_bayes_", obj$vty, "_", obj$date$formatted,".RDS"))
+}
+saveChbmod.blueberry_s2 <- function(obj, folder = here("dataProcessed")) {
+  saveRDS(obj, file = paste0(folder, "/model_bayes_", obj$vty, "_", obj$date$formatted,".RDS"))
+}
+#' @export
 print.chbmod <- function(obj, ...) {
   print(obj$summary)
   invisible(obj)
@@ -35,7 +50,7 @@ print.chbmod <- function(obj, ...) {
 
 #' @export
 cherry_s1_chbmod <- function(...) {
-  rhsform <- ~std_ftemp
+  rhsform <- "~std_ftemp"
   object <- chbmod(..., rhsform = rhsform, fit = fitting_cherry_stan)
   class(object) <- c("cherry_s1", class(object))
   object
@@ -45,7 +60,7 @@ cherry_s1_chbmod <- function(...) {
 cherry_s2_chbmod <- function(...) {
   ns_knots <- c(-0.8, -0.45, -0.32, 0.25, 1.5)
   ns_bknots <- c(-1.18, 3.71)
-  fe_formula <- as.formula(substitute(cbind(NoFlowersLive, NoFlowersDead)~std_ftemp + std_AIR_TEMP_F48 + ns(std_gddchill, knots = knots, Boundary.knots = bknots), list(knots = ns_knots, bknots = ns_bknots)))
+  fe_formula <- as.character(substitute(cbind(NoFlowersLive, NoFlowersDead)~std_ftemp + std_AIR_TEMP_F48 + ns(std_gddchill, knots = knots, Boundary.knots = bknots), list(knots = ns_knots, bknots = ns_bknots)))
   rhsform <- RHSForm(fe_formula, as.form = T)
   object <- chbmod(..., fit = fitting_cherry_stan)
   class(object) <- c("cherry_s2", class(object))
@@ -73,6 +88,11 @@ dataset.chbmod <- function(obj, repo = here("reuse")) {
   files <- list.files(repo)
   fmatch <- match(name, files)
   readRDS(paste0(repo, "/", files[fmatch]))
+}
+
+#' @export
+getformula <- function(obj, ...) {
+  as.formula(obj$rhsform)
 }
 
 ##' Fit model
