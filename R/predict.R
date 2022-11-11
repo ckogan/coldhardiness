@@ -7,7 +7,8 @@
 ##' \item{rhsform}{model formula for RHS}
 ##' \item{sflat}{2d array of posterior simulations nsims x npars}
 #' @export
-chbmod <- function(rhsform, fteed_vty, model, fit, repo = here("reuse"), ...) {
+chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), ...) {
+  fteed_vty <- fteed %>% filter(variety == vty)
   reuseR(fteed_vty, repo = repo)
   object <- fit(rhsform, fteed_vty, model, ...)
   sflat = flatten_stan_array(as.array(object))
