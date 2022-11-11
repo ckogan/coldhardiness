@@ -15,19 +15,45 @@ chbmod <- function(rhsform, fteed_vty, model, fit, repo = here("reuse"), ...) {
   structure(list(model_pars = dimnames(sflat)[[2]],
                  rhsform = rhsform,
                  sflat = sflat,
+                 output = capture.output(print(object)),
                  datahash = digest(fteed_vty)),
             class = "chbmod")
 }
 
 #' @export
-cherry_chbmod <- function(...) {
+print.chbmod <- function(obj, ...) {
+  cat(obj$output)
+  invisible(obj)
+}
+
+#' @export
+cherry_s1_chbmod <- function(...) {
+  rhsform <- ~std_ftemp
+  object <- chbmod(..., rhsform = rhsform, fit = fitting_cherry_stan)
+  class(object) <- c("cherry", class(object))
+  object
+}
+
+#' @export
+cherry_s2_chbmod <- function(...) {
+  ns_knots <- c(-0.8, -0.45, -0.32, 0.25, 1.5)
+  ns_bknots <- c(-1.18, 3.71)
+  fe_formula <- as.formula(substitute(cbind(NoFlowersLive, NoFlowersDead)~std_ftemp + std_AIR_TEMP_F48 + ns(std_gddchill, knots = knots, Boundary.knots = bknots), list(knots = ns_knots, bknots = ns_bknots)))
+  rhsform <- RHSForm(fe_formula, as.form = T)
   object <- chbmod(..., fit = fitting_cherry_stan)
   class(object) <- c("cherry", class(object))
   object
 }
 
 #' @export
-blueberry_chbmod <-  function(...) {
+blueberry_s1_chbmod <-  function(...) {
+  object <- chbmod(..., fit = fitting_blueberry_stan)
+  class(object) <- c("blueberry", class(object))
+  object
+}
+
+#' @export
+blueberry_s2_chbmod <-  function(...) {
   object <- chbmod(..., fit = fitting_blueberry_stan)
   class(object) <- c("blueberry", class(object))
   object
