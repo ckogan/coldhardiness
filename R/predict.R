@@ -7,15 +7,100 @@
 ##' \item{rhsform}{model formula for RHS}
 ##' \item{sflat}{2d array of posterior simulations nsims x npars}
 #' @export
-chbmod <- function(object, rhsform) {
+chbmod <- function(rhsform, fteed_vty, model, fit, repo = here("reuse"), ...) {
+  reuseR(fteed_vty, repo = repo)
+  object <- fit(rhsform, fteed_vty, model, ...)
   sflat = flatten_stan_array(as.array(object))
 
   structure(list(model_pars = dimnames(sflat)[[2]],
                  rhsform = rhsform,
-                 sflat = sflat),
+                 sflat = sflat,
+                 datahash = digest(fteed_vty)),
             class = "chbmod")
 }
 
+#' @export
+cherry_chbmod <- function(...) {
+  object <- chbmod(..., fit = fitting_cherry_stan)
+  class(object) <- c("cherry", class(object))
+  object
+}
+
+#' @export
+blueberry_chbmod <-  function(...) {
+  object <- chbmod(..., fit = fitting_blueberry_stan)
+  class(object) <- c("blueberry", class(object))
+  object
+}
+
+#' @export
+dataset <- function(obj, ...) UseMethod("dataset")
+dataset.chbmod <- function(obj, repo = here("reuse")) {
+  name <- paste0("md5_", obj$data_digest, ".RDS")
+  files <- list.files(repo)
+  fmatch <- match(name, files)
+  readRDS(paste0(repo, "/", files[fmatch]))
+}
+
+##' Fit model
+##' @param object a \code{fe_formula_rhs} formula for model X matrix
+##' @param object a \code{fteed_vty} data for X matrix
+##' @param object a \code{model} compiled code for stan model
+fitting_cherry_stan <- function(fe_formula_rhs, fteed_vty, model, ...) {
+
+  fteed_vty_nc <- fteed_vty %>%
+    filter(ftemp < 4) %>%
+    mutate(
+      can_ID = makeID(Field, date, ftemp), #
+      Spur_ID = makeID(Field, date, ftemp, Spur),
+      bud_ID = makeID(Field, date, ftemp, Spur, bud)
+    )
+
+  fteed_vty_c <- fteed_vty %>%
+    filter(ftemp == 4) %>%
+    mutate(
+      Spur_ID = makeID(Field, date, ftemp, Spur),
+      bud_ID = makeID(Field, date, ftemp, Spur, bud)
+    )
+
+  X <- model.matrix(fe_formula_rhs, data = fteed_vty_nc)
+  xcol <- ncol(X)
+  colnames(X) <- paste("V", 1:ncol(X), sep = "")
+
+
+  data_list <- list(
+    P = xcol,
+    N = nrow(fteed_vty_nc),
+    NC = nrow(fteed_vty_c),
+    trials = fteed_vty_nc$NoFlowers,
+    trials_control = fteed_vty_c$NoFlowers,
+    X = X,
+    N_seasonXfield = max(fteed_vty_nc$seasonXfield_ID),
+    seasonXfield_ID = fteed_vty_nc$seasonXfield_ID,
+    N_fieldXdate = max(fteed_vty_nc$fieldXdate_ID),
+    fieldXdate_ID = fteed_vty_nc$fieldXdate_ID,
+    fieldXdate_control_ID = fteed_vty_c$fieldXdate_ID,
+    N_can = max(fteed_vty_nc$can_ID),
+    can_ID = fteed_vty_nc$can_ID,
+    N_spur = max(fteed_vty_nc$Spur_ID),
+    N_spur_control = max(fteed_vty_c$Spur_ID),
+    spur_ID = fteed_vty_nc$Spur_ID,
+    spur_control_ID = fteed_vty_c$Spur_ID,
+    N_bud = max(fteed_vty_nc$bud_ID),
+    N_bud_control = max(fteed_vty_c$bud_ID),
+    bud_ID = fteed_vty_nc$bud_ID,
+    bud_control_ID = fteed_vty_c$bud_ID,
+    Y = fteed_vty_nc$NoFlowersLive,
+    Y_control = fteed_vty_c$NoFlowersLive,
+    x_cov = diag(10, xcol),# 100*as.matrix(vcov(glmerfit)),
+    beta_mu = rep(0, xcol),#as.vector(coef(summary(glmerfit))[,1]),
+    prior_only = F
+  )
+  # f_init <- function() {
+  #   list(beta = MASS::mvrnorm(1, as.vector(coef(summary(glmerfit))[,1]),as.matrix(vcov(glmerfit))))
+  # }
+  sampling(model, data = data_list, pars = c("S_seasonXfield","S_can", "S_Spur", "S_bud", "S_fieldXdate", "S_fieldXdate_fi", "beta", "r_seasonXfield","r_fieldXdate","r_fieldXdate_fi"), ...) #,  control = list( max_treedepth = 13),sample_file = "samples_100.csv", , control = list(adapt_delta = 0.999, max_treedepth = 13)
+}
 
 ##' posterior predictive distribution (or characteristics of) for chbmod
 ##' @param object a \code{chbmod} object
