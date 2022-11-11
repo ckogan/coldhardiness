@@ -13,16 +13,18 @@ chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), ...) {
   object <- fit(rhsform, fteed_vty, model, ...)
   sflat = flatten_stan_array(as.array(object))
 
-  structure(list(model_pars = object@model_pars,
-                 model_pars_long = dimnames(sflat)[[2]],
-                 model_code = object@stanmodel@model_code,
-                 summary = summary(object)$summary,
-                 stan_args = object@stan_args,
-                 date = object@date,
-                 rhsform = rhsform,
-                 sflat = sflat,
-                 datahash = digest(fteed_vty)),
-            class = "chbmod")
+  structure(list(
+    datahash = digest(fteed_vty),
+    date = object@date,
+    model_code = object@stanmodel@model_code,
+    model_pars = object@model_pars,
+    model_pars_long = dimnames(sflat)[[2]],
+    rhsform = rhsform,
+    sflat = sflat,
+    stan_args = object@stan_args,
+    summary = summary(object)$summary,
+    vty = vty),
+    class = "chbmod")
 }
 
 #' @export
