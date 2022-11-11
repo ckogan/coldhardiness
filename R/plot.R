@@ -1,6 +1,6 @@
 #' @export
-plot.cherry_s1 <- function(obj, which = 1) {
-  show <- rep(FALSE, 1)
+plot.cherry_s1 <- function(obj, which = 1:2) {
+  show <- rep(FALSE, 2)
   show[which] <- TRUE
   if (show[1L]) {  # Plot the probability estimates for each date vs. ftemp
     props <- dataset(obj) %>%
@@ -11,5 +11,8 @@ plot.cherry_s1 <- function(obj, which = 1) {
                       f = unstd_ftemp, p = 0.5, lt_names = "LT50", center = median)
     plt <- props %>% ggplot(aes(ftemp, prop)) + geom_point() + geom_line(aes(y = pred)) + geom_vline(data = lts, aes(xintercept = LT50))+ facet_wrap(Field~date)
     print(plt)
+  }
+  if (show[2L]) {
+    traceplot(obj$stanfit)
   }
 }

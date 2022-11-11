@@ -16,19 +16,25 @@ chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), shrink
       stan_axe(what = 'fit_instance') %>%
       stan_axe(what = 'stanmodel')
   }
+  sflat <- flatten_stan_array(as.array(object))
+  pars <- dimnames(sflat)[[2]]
+  par_grps <- list(
+    beta = pars %>% str_subset("beta"),
+    sd = pars %>% str_subset("S_"),
+    seasonXfield = pars %>% str_subset("r_seasonXfield"),
+    fieldXdate_fi = pars %>% str_subset("r_fieldXdate_fi")
+    )
 
   structure(list(
     comments = comments,
     datahash = digest(fteed_vty),
     date = list(pretty=format(Sys.time(), "%a %b %d %X %Y"),formatted=str_replace_all(format(Sys.time(), "%Y-%m-%d-%X"), ":", "") %>% str_replace_all(" ", "")),
-    model_code = object@stanmodel@model_code,
     model_pars = object@model_pars,
-    model_pars_long = dimnames(sflat)[[2]],
+    model_pars_long = pars,
+    par_grps = par_grps,
     rhsform = rhsform,
     sflat = sflat,
-    stan_args = object@stan_args,
-    stanfit = flatten_stan_array(as.array(object)),
-    summary = summary(object)$summary,
+    stanfit = object,
     vty = vty),
     class = "chbmod")
 }
