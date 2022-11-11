@@ -7,11 +7,15 @@
 ##' \item{rhsform}{character model formula for RHS}
 ##' \item{sflat}{2d array of posterior simulations nsims x npars}
 #' @export
-chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), comments = "", ...) {
+chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), shrink = T, comments = "", ...) {
   fteed_vty <- fteed %>% filter(variety == vty)
   reuseR(fteed_vty, repo = repo)
   object <- fit(as.formula(rhsform), fteed_vty, model, ...)
-  sflat = flatten_stan_array(as.array(object))
+  if(shrink) {
+    object <- object %>%
+      stan_axe(what = 'fit_instance') %>%
+      stan_axe(what = 'stanmodel')
+  }
 
   structure(list(
     comments = comments,
@@ -23,6 +27,7 @@ chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), commen
     rhsform = rhsform,
     sflat = sflat,
     stan_args = object@stan_args,
+    stanfit = flatten_stan_array(as.array(object)),
     summary = summary(object)$summary,
     vty = vty),
     class = "chbmod")
