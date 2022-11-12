@@ -24,6 +24,7 @@ chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), shrink
     seasonXfield = pars %>% str_subset("r_seasonXfield"),
     fieldXdate_fi = pars %>% str_subset("r_fieldXdate_fi")
     )
+  par_grps[["fieldXdate"]] <- setdiff(pars, par_grps[["fieldXdate_fi"]]) %>% str_subset("r_fieldXdate")
 
   structure(list(
     comments = comments,

@@ -1,6 +1,6 @@
 #' @export
-plot.cherry_s1 <- function(obj, which = 1:2) {
-  show <- rep(FALSE, 2)
+plot.cherry_s1 <- function(obj, which = 1:4) {
+  show <- rep(FALSE, 4)
   show[which] <- TRUE
   if (show[1L]) {  # Plot the probability estimates for each date vs. ftemp
     props <- dataset(obj) %>%
@@ -13,6 +13,13 @@ plot.cherry_s1 <- function(obj, which = 1:2) {
     print(plt)
   }
   if (show[2L]) {
-    traceplot(obj$stanfit)
+    print(traceplot(obj$stanfit, obj$par_grps$beta))
   }
+  if (show[3L]) {
+    print(traceplot(obj$stanfit, obj$par_grps$sd))
+  }
+  if (show[4L]) {
+    print(traceplot(obj$stanfit, obj$par_grps$seasonXfield))
+  }
+  seasonXfield
 }
