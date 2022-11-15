@@ -6,7 +6,7 @@ plot.cherry_s1 <- function(obj, which = 1:6) {
     props <- dataset(obj) %>%
       group_by(seasonXfield_ID, fieldXdate_ID, Field, date, ftemp, std_ftemp) %>%
       summarise(prop = sum(NoFlowersLive)/sum(NoFlowers))
-    props$pred <- predict(model_bayes, newdata = props, re.form = c(r_seasonXfield = "seasonXfield_ID", r_fieldXdate = "fieldXdate_ID"), type = "response", stat = median)
+    props$pred <- predict(obj, newdata = props, re.form = c(r_seasonXfield = "seasonXfield_ID", r_fieldXdate = "fieldXdate_ID"), type = "response", stat = median)
     lts <- augment_lt(obj, newdata = props %>% ungroup() %>% select(seasonXfield_ID, fieldXdate_ID, Field, date), re.form = c(r_seasonXfield = "seasonXfield_ID", r_fieldXdate = "fieldXdate_ID"),
                       f = unstd_ftemp, p = 0.5, lt_names = "LT50", center = median)
     plt <- props %>% ggplot(aes(ftemp, prop)) + geom_point() + geom_line(aes(y = pred)) + geom_vline(data = lts, aes(xintercept = LT50))+ facet_wrap(Field~date)
