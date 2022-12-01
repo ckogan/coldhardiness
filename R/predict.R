@@ -42,15 +42,23 @@ chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), shrink
 
 #' @export
 saveChbmod <- function(obj, ...) UseMethod("saveChbmod")
+
+#' @export
 saveChbmod.cherry_s1 <- function(obj, folder = here("dataProcessed")) {
   saveRDS(obj, file = paste0(folder, "/stage1_model_bayes_", obj$vty, "_", obj$date$formatted,".RDS"))
 }
+
+#' @export
 saveChbmod.cherry_s2 <- function(obj, folder = here("dataProcessed")) {
   saveRDS(obj, file = paste0(folder, "/model_bayes_", obj$vty, "_", obj$date$formatted,".RDS"))
 }
+
+#' @export
 saveChbmod.blueberry_s1 <- function(obj, folder = here("dataProcessed")) {
   saveRDS(obj, file = paste0(folder, "/stage1_model_bayes_", obj$vty, "_", obj$date$formatted,".RDS"))
 }
+
+#' @export
 saveChbmod.blueberry_s2 <- function(obj, folder = here("dataProcessed")) {
   saveRDS(obj, file = paste0(folder, "/model_bayes_", obj$vty, "_", obj$date$formatted,".RDS"))
 }
@@ -95,6 +103,8 @@ blueberry_s2_chbmod <-  function(...) {
 
 #' @export
 dataset <- function(obj, ...) UseMethod("dataset")
+
+#' @export
 dataset.chbmod <- function(obj, repo = here("reuse")) {
   name <- paste0("md5_", obj$datahash, ".RDS")
   files <- list.files(repo)
