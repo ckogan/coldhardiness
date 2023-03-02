@@ -174,7 +174,8 @@ fitting_cherry_stan <- function(fe_formula_rhs, fteed_vty, model, ...) {
   # f_init <- function() {
   #   list(beta = MASS::mvrnorm(1, as.vector(coef(summary(glmerfit))[,1]),as.matrix(vcov(glmerfit))))
   # }
-  sampling(model, data = data_list, pars = c("S_seasonXfield","S_can", "S_Spur", "S_bud", "S_fieldXdate", "S_fieldXdate_fi", "beta", "r_seasonXfield","r_fieldXdate","r_fieldXdate_fi"), ...) #,  control = list( max_treedepth = 13),sample_file = "samples_100.csv", , control = list(adapt_delta = 0.999, max_treedepth = 13)
+  fitted <- sampling(model, data = data_list, pars = c("S_seasonXfield","S_can", "S_Spur", "S_bud", "S_fieldXdate", "S_fieldXdate_fi", "beta", "r_seasonXfield","r_fieldXdate","r_fieldXdate_fi"), ...) #,  control = list( max_treedepth = 13),sample_file = "samples_100.csv", , control = list(adapt_delta = 0.999, max_treedepth = 13)
+  fitted
 }
 
 ##' posterior predictive distribution (or characteristics of) for chbmod
