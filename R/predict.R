@@ -10,7 +10,7 @@
 chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), shrink = T, comments = "", ...) {
   fteed_vty <- fteed %>% filter(variety == vty)
   reuseR(fteed_vty, repo = repo)
-  object <- fit(as.formula(rhsform), fteed_vty, model, ...)
+  object <- fit(rhsform, fteed_vty, model, ...)
   if(shrink) {
     object <- object %>%
       stan_axe(what = 'fit_instance') %>%
@@ -82,7 +82,7 @@ cherry_s2_chbmod <- function(...) {
   ns_bknots <- c(-1.18, 3.71)
   fe_formula <- as.formula(substitute(cbind(NoFlowersLive, NoFlowersDead)~std_ftemp + std_AIR_TEMP_F48 + ns(std_gddchill, knots = knots, Boundary.knots = bknots), list(knots = ns_knots, bknots = ns_bknots)))
   rhsform <- as.character(RHSForm(fe_formula, as.form = T))
-  object <- chbmod(..., fit = fitting_cherry_stan)
+  object <- chbmod(..., rhsform = rhsform, fit = fitting_cherry_stan)
   class(object) <- c("cherry_s2", class(object))
   object
 }
@@ -138,7 +138,7 @@ fitting_cherry_stan <- function(fe_formula_rhs, fteed_vty, model, ...) {
       bud_ID = makeID(Field, date, ftemp, Spur, bud)
     )
 
-  X <- model.matrix(fe_formula_rhs, data = fteed_vty_nc)
+  X <- model.matrix(formula(paste(fe_formula_rhs, collapse=" ")) , data = fteed_vty_nc)
   xcol <- ncol(X)
   colnames(X) <- paste("V", 1:ncol(X), sep = "")
 
