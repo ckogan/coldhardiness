@@ -7,9 +7,8 @@
 ##' \item{rhsform}{character model formula for RHS}
 ##' \item{sflat}{2d array of posterior simulations nsims x npars}
 #' @export
-chbmod <- function(rhsform, fteed, model, vty, fit, repo = here("reuse"), shrink = T, comments = "", ...) {
+chbmod <- function(rhsform, fteed, model, vty, fit, shrink = T, comments = "", ...) {
   fteed_vty <- fteed %>% filter(variety == vty)
-  reuseR(fteed_vty, repo = repo)
   object <- fit(rhsform, fteed_vty, model, ...)
   if(shrink) {
     object <- object %>%
