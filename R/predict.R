@@ -8,12 +8,13 @@
 ##' \item{sflat}{2d array of posterior simulations nsims x npars}
 #' @export
 chbmod <- function(rhsform, fteed, model, vty, fit, shrink = T, comments = "", ...) {
+  require(shedder)
   fteed_vty <- fteed %>% filter(variety == vty)
   object <- fit(rhsform, fteed_vty, model, ...)
   if(shrink) {
     object <- object %>%
-      stan_axe(what = 'fit_instance') %>%
-      stan_axe(what = 'stanmodel')
+      shredder::stan_axe(what = 'fit_instance') %>%
+      shredder::stan_axe(what = 'stanmodel')
   }
   sflat <- flatten_stan_array(as.array(object))
   pars <- dimnames(sflat)[[2]]
